@@ -76,10 +76,8 @@ class FileSource : public DataSource<T> {
 		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
 		~FileSource() = default; 
 		
-		//Unfortunately the get operator can't be const, as it may (as in this case)
-		//need to modify state for (for example) reading from files. 
-		T get() override { return 0; };
-		void tock() override {};
+		virtual T * get() override { return 0; };
+		virtual void tock() override {};
 
 };
 
@@ -94,6 +92,7 @@ class FileSourceImpl {
 		int datapoints_limit; 
 		unsigned int datapoints_read; 
 		unsigned int windowsize; 
+		unsigned int validwindow; 
 		unsigned int start; 
 	
 		bool ready; 
@@ -108,6 +107,7 @@ class FileSourceImpl {
 			datapoints_limit(datapoints),
 			datapoints_read(0),
 			windowsize(_windowsize),
+			validwindow(0),
 			start(0),
 			ready(false)
 		{
@@ -135,18 +135,22 @@ class FileSourceImpl {
 
 			auto func = [&]() {
 				
-				for(int i = 0; i < read_extent; i++)  {
+				unsigned int i = 0;
+				
+				for( ; i < read_extent; i++)  {
 					if(datapoints_read == datapoints_limit) break; 
+					if(file.eof()) break;
 					file >> data[i];
 					datapoints_read++;
 				}
+				
+				validwindow = i;
 				
 				ready = true; 
 				
 			};
 			
-			ft = async(func);
-			
+ 			ft = async(func);
 			
 		}
 		
@@ -154,15 +158,73 @@ class FileSourceImpl {
 		FileSourceImpl(FileSourceImpl<T> const & cpy) = delete; 
 		FileSourceImpl<T>& operator =(const FileSourceImpl<T>& cpy) = delete; 
 		
-		
 		FileSourceImpl(FileSourceImpl<T> && mv) = delete; 
 		FileSourceImpl<T>& operator =(FileSourceImpl<T> && mv) = delete; 
 		~FileSourceImpl() = default; 
-
+		
+		T * get() { 
+			if(!ready) {
+				ft.get();
+			}
+			return data.data() + start;
+		}
+		
+		void tock() {
+			start++;
+			if(start == ((windowsize * 2) - 1)) {
+			
+				//Time to load a new file slice. 
+				
+				//Mark as unready. 
+				ready = false; 
+				
+				//Redisg the read_extent. We read in three, one is left, so we only need
+				//to read in two. This isn't quite optimal as it recalculates for each time
+				//this function runs. I'll figure that out later. 
+				
+				read_extent = 
+				(unsigned int) 
+					floor(
+						(
+							(
+								(double) (windowsize * 2)
+							)
+						) / 1024.0
+					) * 1024;
+				
+				auto func = [&]() {
+					
+					//First things first, lets delete the items in the vector that we 
+					//no longer need. 
+					
+					data.erase(data.begin(), data.begin + (windowsize * 2));
+					
+					//Reset the start
+					
+					start = 0; 
+				
+					//Now the load
+					
+					unsigned int i = 0; 
+					
+					for( ; i < read_extent; i++)  {
+						if(datapoints_read == datapoints_limit) break; 
+						if(file.eof()) break;
+						file >> data[i];
+						datapoints_read++;
+					}
+					
+					validwindow = i + windowsize;
+					
+					ready = true; 
+				
+				};
+				
+			}
+		}
+	
 };
 
 }
 
 #endif
-
-

@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DataSource_HEADER
 #define DataSource_HEADER
 
+namespace libsim 
+{
+
 template<class T>
 class DataSource {
 	
@@ -39,10 +42,12 @@ class DataSource {
 		DataSource(unsigned int _windowsize) : windowsize(_windowsize) { };
 		~DataSource() { };
     
-		virtual T get() = 0;
+		virtual T * get() = 0;
 		virtual void tock() = 0;
     
 };
+
+}
 
 #endif
 

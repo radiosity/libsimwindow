@@ -32,14 +32,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "FileSource.hpp"
 
-using std::cout;
-using std::endl; 
-using std::move; 
-using namespace libsim;
+//using namespace libsim;
 
 BOOST_AUTO_TEST_CASE(event_test_get) {
 	
-	auto fs = FileSource<int>("", 10);
+	auto fs = libsim::FileSource<int>("", 10);
 
 	BOOST_CHECK_EQUAL(0,  0);
 	
