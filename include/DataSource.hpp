@@ -42,8 +42,12 @@ class DataSource {
 		DataSource(unsigned int _windowsize) : windowsize(_windowsize) { };
 		~DataSource() { };
     
+		//get a pointer to the start of the window
 		virtual T * get() = 0;
-		virtual void tock() = 0;
+		//increment the start pointer
+		virtual void tock() = 0
+		//check that the window is still valid
+		virtual bool eods() const = 0; 
     
 };
 

@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 BOOST_AUTO_TEST_CASE(event_test_get) {
 	
-	auto fs = libsim::FileSource<int>("", 10);
+	auto fs = libsim::FileSource<int>("test/data", 10);
 
 	BOOST_CHECK_EQUAL(0,  0);
 	

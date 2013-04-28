@@ -25,6 +25,31 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+
+The purpose of this class (and its PIMPL) is to provide a useful implementation 
+of a sliding window which allows pointer-base access to the fundamental datatype 
+array. This is mostly useful for compatability with existing C programmes. Chief 
+among these, at least the primary motivation for this library, is to interface 
+with the GNU Scientific Library, which expects arrays of base types. 
+
+Simply, the class looks like this:
+
+........1010100110101111001010100100100........................
+
+	|--------| window (valid 0 to 9 inc)
+	 |--------| window + one tick. (valid 1 to 10 inc)
+ 
+But this data is a member of (potentially) larger file:
+
+0100010010101001101011110010101001001000101100101111101110101000
+
+This class provides a mechanism for the asynchronous loading of data from the file
+and presenting it in a moving-window interface that is compatabile with the 
+DataSource parent class.
+
+*/
+
 
 #ifndef FileSource_HEADER
 #define FileSource_HEADER
@@ -76,8 +101,9 @@ class FileSource : public DataSource<T> {
 		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
 		~FileSource() = default; 
 		
-		virtual T * get() override { return 0; };
-		virtual void tock() override {};
+		virtual T * get() override { return impl->get(); };
+		virtual void tock() override { impl->tock(); };
+		virtual bool eods() override { impl->eods(); };
 
 };
 
@@ -136,6 +162,7 @@ class FileSourceImpl {
 			auto func = [&]() {
 				
 				unsigned int i = 0;
+				validwindow = 0; 
 				
 				for( ; i < read_extent; i++)  {
 					if(datapoints_read == datapoints_limit) break; 
@@ -144,7 +171,7 @@ class FileSourceImpl {
 					datapoints_read++;
 				}
 				
-				validwindow = i;
+				validwindow = i + 1;
 				
 				ready = true; 
 				
@@ -197,11 +224,12 @@ class FileSourceImpl {
 					//First things first, lets delete the items in the vector that we 
 					//no longer need. 
 					
-					data.erase(data.begin(), data.begin + (windowsize * 2));
+					data.erase(data.begin(), data.begin() + (windowsize * 2));
 					
-					//Reset the start
+					//Reset the start and the valid window
 					
 					start = 0; 
+					validwindow = 0; 
 				
 					//Now the load
 					
@@ -214,13 +242,40 @@ class FileSourceImpl {
 						datapoints_read++;
 					}
 					
-					validwindow = i + windowsize;
+					validwindow = (i+1) + windowsize;
 					
 					ready = true; 
 				
 				};
 				
+				ft = async(func);
+				
 			}
+		}
+		
+		inline bool eods() const {
+			//end of data stream. 
+			//
+			//basically, is the window still valid. 
+			//
+			//This is fairly easy to check, as it comes down to two things
+			//Firstly. Is the pointer within the valid window. 
+			
+			//If there are 30 valid items in the array, there are items 
+			//from 0-29. 
+			//
+			//The last valid window would be from 20-29. The window becomes
+			//invalid when the start pointer is equal to 21 or more. So:
+			//		   30      31    21
+			if(start >= ((validwindow +1) - windowsize) return true; 
+				
+			//Secondly, is the pointer within the maximum window. This follows
+			//the same idea, but uses the maximum windowsize (data.size())
+			//for situations where 
+			if(start >= ((data.size() +1) - windowsize) return true;
+			
+			return false; 
+			
 		}
 	
 };
