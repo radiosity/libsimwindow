@@ -39,7 +39,7 @@ class DataSource {
 		DataSource(unsigned int _windowsize) : windowsize(_windowsize) { };
 		~DataSource() { };
     
-		virtual T get() const = 0;
+		virtual T get() = 0;
 		virtual void tock() = 0;
     
 };

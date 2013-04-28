@@ -76,7 +76,9 @@ class FileSource : public DataSource<T> {
 		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
 		~FileSource() = default; 
 		
-		T get() const override { return 0; };
+		//Unfortunately the get operator can't be const, as it may (as in this case)
+		//need to modify state for (for example) reading from files. 
+		T get() override { return 0; };
 		void tock() override {};
 
 };
