@@ -61,6 +61,7 @@ DataSource parent class.
 #include <future>
 #include <functional>
 #include <cmath>
+#include <iostream>
 
 #include "DataSource.hpp"
 
@@ -72,6 +73,8 @@ using std::async;
 using std::function; 
 using std::packaged_task;
 using std::vector;
+using std::cout; 
+using std::endl; 
 
 namespace libsim 
 {
@@ -103,7 +106,7 @@ class FileSource : public DataSource<T> {
 		
 		virtual T * get() override { return impl->get(); };
 		virtual void tock() override { impl->tock(); };
-		virtual bool eods() override { impl->eods(); };
+		virtual bool eods() const override { return impl->eods(); };
 
 };
 
@@ -142,14 +145,14 @@ class FileSourceImpl {
 			//What I'd like to do is to read at least three times the 
 			//windowsize, rounded up to the nearest multiple of 1024.
 			//
-			//1024 is by no means a magic number supposed to align the 
+			//1024 is by nofuture means a magic number supposed to align the 
 			//read to a page boundary or somesuch; the input file is 
 			//ASCII formatted T, so the number of lines read will only 
 			//losely conform to a number of bytes. 1024 is Just a nice number. 
 			
 			read_extent = 
 				(unsigned int) 
-					floor(
+					ceil(
 						(
 							(
 								(double) (windowsize * 3)
@@ -159,8 +162,11 @@ class FileSourceImpl {
 			
 			data.reserve(read_extent);
 
-			auto func = [&]() {
+			future<void> ft1 = async(function<void(void)>([&]() {
 				
+				cout << "Hello" << endl; 
+				
+				/*
 				unsigned int i = 0;
 				validwindow = 0; 
 				
@@ -174,10 +180,11 @@ class FileSourceImpl {
 				validwindow = i + 1;
 				
 				ready = true; 
+				*/
 				
-			};
+			}));
 			
- 			ft = async(func);
+			ft1.get();
 			
 		}
 		
@@ -211,7 +218,7 @@ class FileSourceImpl {
 				
 				read_extent = 
 				(unsigned int) 
-					floor(
+					ceil(
 						(
 							(
 								(double) (windowsize * 2)
@@ -219,7 +226,7 @@ class FileSourceImpl {
 						) / 1024.0
 					) * 1024;
 				
-				auto func = [&]() {
+				ft = async(function<void(void)>([&]() {
 					
 					//First things first, lets delete the items in the vector that we 
 					//no longer need. 
@@ -246,9 +253,7 @@ class FileSourceImpl {
 					
 					ready = true; 
 				
-				};
-				
-				ft = async(func);
+				}));
 				
 			}
 		}
@@ -267,12 +272,12 @@ class FileSourceImpl {
 			//The last valid window would be from 20-29. The window becomes
 			//invalid when the start pointer is equal to 21 or more. So:
 			//		   30      31    21
-			if(start >= ((validwindow +1) - windowsize) return true; 
+			if(start >= ((validwindow +1) - windowsize)) return true; 
 				
 			//Secondly, is the pointer within the maximum window. This follows
 			//the same idea, but uses the maximum windowsize (data.size())
 			//for situations where 
-			if(start >= ((data.size() +1) - windowsize) return true;
+			if(start >= ((data.size() +1) - windowsize)) return true;
 			
 			return false; 
 			

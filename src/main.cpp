@@ -29,15 +29,42 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/test/included/unit_test.hpp>
 
 #include <utility>
+#include <iostream>
+#include <future>
+#include <functional>
 
-#include "FileSource.hpp"
+//#include "FileSource.hpp"
+
+using std::cout; 
+using std::endl; 
+using std::future; 
+using std::async;
 
 //using namespace libsim;
 
-BOOST_AUTO_TEST_CASE(event_test_get) {
+/*
+BOOST_AUTO_TEST_CASE(filesource_test) {
 	
 	auto fs = libsim::FileSource<int>("test/data", 10);
 
-	BOOST_CHECK_EQUAL(0,  0);
+	BOOST_CHECK_EQUAL(0, fs.get()[0]);
+	
+}
+*/
+
+BOOST_AUTO_TEST_CASE(filesource_test) {
+	
+	future<int> f2 = async(std::launch::deferred, [](){ return 8; });
+	f2.wait();
+	cout << f2.get() << endl; 
+	
+	/*
+	future<void> ft1 = async(function<void(void)>([&]() {
+				
+		cout << "Hello" << endl; 
+		
+	}));
+	ft1.get();
+	*/
 	
 }

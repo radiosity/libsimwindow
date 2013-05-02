@@ -1,0 +1,1 @@
+In the name of god, you need to link with pthread. If you don't, the resultant programme will silently fail; you won't get a compile warning because the C++11 libraries pull in pthread at runtime. 
