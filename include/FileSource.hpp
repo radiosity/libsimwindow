@@ -62,6 +62,7 @@ DataSource parent class.
 #include <functional>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 
 #include "DataSource.hpp"
 
@@ -69,12 +70,12 @@ using std::string;
 using std::auto_ptr; 
 using std::ifstream;
 using std::future;
+using std::function;
 using std::async; 
-using std::function; 
-using std::packaged_task;
 using std::vector;
 using std::cout; 
 using std::endl; 
+using std::stringstream; 
 
 namespace libsim 
 {
@@ -105,7 +106,7 @@ class FileSource : public DataSource<T> {
 		~FileSource() = default; 
 		
 		virtual T * get() override { return impl->get(); };
-		virtual void tock() override { impl->tock(); };
+		virtual void tick() override { impl->tock(); };
 		virtual bool eods() const override { return impl->eods(); };
 
 };
@@ -141,50 +142,37 @@ class FileSourceImpl {
 			ready(false)
 		{
 			
-			//First, calculate the read extent from the window size. 
-			//What I'd like to do is to read at least three times the 
-			//windowsize, rounded up to the nearest multiple of 1024.
-			//
-			//1024 is by nofuture means a magic number supposed to align the 
-			//read to a page boundary or somesuch; the input file is 
-			//ASCII formatted T, so the number of lines read will only 
-			//losely conform to a number of bytes. 1024 is Just a nice number. 
-			
-			read_extent = 
-				(unsigned int) 
-					ceil(
-						(
-							(
-								(double) (windowsize * 3)
-							)
-						) / 1024.0
-					) * 1024;
+			read_extent = windowsize * 3; 
 			
 			data.reserve(read_extent);
+			
+			if(!file.good()) throw -1; 
 
-			future<void> ft1 = async(function<void(void)>([&]() {
+			ft = async(function<void(void)>([&]() {
 				
-				cout << "Hello" << endl; 
-				
-				/*
 				unsigned int i = 0;
 				validwindow = 0; 
 				
 				for( ; i < read_extent; i++)  {
 					if(datapoints_read == datapoints_limit) break; 
 					if(file.eof()) break;
-					file >> data[i];
+					
+					string stemp; 
+					getline(file, stemp);
+					
+					stringstream ss(stemp);
+					T temp;
+					ss >> temp; 
+					
+					data.push_back(temp);
 					datapoints_read++;
 				}
 				
 				validwindow = i + 1;
 				
 				ready = true; 
-				*/
 				
 			}));
-			
-			ft1.get();
 			
 		}
 		
@@ -216,22 +204,14 @@ class FileSourceImpl {
 				//to read in two. This isn't quite optimal as it recalculates for each time
 				//this function runs. I'll figure that out later. 
 				
-				read_extent = 
-				(unsigned int) 
-					ceil(
-						(
-							(
-								(double) (windowsize * 2)
-							)
-						) / 1024.0
-					) * 1024;
+				read_extent =  (windowsize * 2);
 				
 				ft = async(function<void(void)>([&]() {
 					
 					//First things first, lets delete the items in the vector that we 
 					//no longer need. 
 					
-					data.erase(data.begin(), data.begin() + (windowsize * 2));
+					data.erase(data.begin(), data.begin() + ((windowsize * 2)-1));
 					
 					//Reset the start and the valid window
 					
@@ -245,7 +225,15 @@ class FileSourceImpl {
 					for( ; i < read_extent; i++)  {
 						if(datapoints_read == datapoints_limit) break; 
 						if(file.eof()) break;
-						file >> data[i];
+						
+						string stemp; 
+						getline(file, stemp);
+						
+						stringstream ss(stemp);
+						T temp;
+						ss >> temp; 
+					
+						data.push_back(temp);
 						datapoints_read++;
 					}
 					

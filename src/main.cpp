@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <future>
 #include <functional>
 
-//#include "FileSource.hpp"
+#include "FileSource.hpp"
 
 using std::cout; 
 using std::endl; 
@@ -42,29 +42,20 @@ using std::async;
 
 //using namespace libsim;
 
-/*
 BOOST_AUTO_TEST_CASE(filesource_test) {
 	
-	auto fs = libsim::FileSource<int>("test/data", 10);
-
-	BOOST_CHECK_EQUAL(0, fs.get()[0]);
+	auto fs = libsim::FileSource<unsigned int>("test/data", 10, 40);
 	
-}
-*/
-
-BOOST_AUTO_TEST_CASE(filesource_test) {
+	for(unsigned int i = 0 ; i < 30; i++) {
 	
-	future<int> f2 = async(std::launch::deferred, [](){ return 8; });
-	f2.wait();
-	cout << f2.get() << endl; 
-	
-	/*
-	future<void> ft1 = async(function<void(void)>([&]() {
-				
-		cout << "Hello" << endl; 
+		for (unsigned int j = 0 ; j < 10; j++) {
+			BOOST_CHECK(!fs.eofs());
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
 		
-	}));
-	ft1.get();
-	*/
+		fs.tick();
+		
+	}
+	
 	
 }
