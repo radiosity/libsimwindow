@@ -1,0 +1,2 @@
+Change the windowsize offsetting for the backing store of the FileSource class?
+Add a seek() function so that a user can skip. This gets rid of the need to loop through (which would be horrifyingly inefficient).
