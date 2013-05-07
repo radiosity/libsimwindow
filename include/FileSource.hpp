@@ -63,6 +63,8 @@ DataSource parent class.
 #include <cmath>
 #include <iostream>
 #include <sstream>
+#include <exception>
+#include <atomic>
 
 #include "DataSource.hpp"
 
@@ -76,9 +78,20 @@ using std::vector;
 using std::cout; 
 using std::endl; 
 using std::stringstream; 
+using std::exception; 
+using std::atomic; 
+using std::launch;
 
 namespace libsim 
 {
+	
+class FileSourceInvalidException : public exception {
+
+	virtual const char * what()  const noexcept {
+		return "File source is invalid: no window, no pending io.";
+	}
+	
+};
 	
 template <class T>
 class FileSourceImpl;
@@ -90,16 +103,31 @@ class FileSource : public DataSource<T> {
 		auto_ptr<FileSourceImpl<T>> impl;
 	
 	public:
-		FileSource(string _filename, unsigned int _windowsize, int _datapoints = -1 ) : DataSource<T>(_windowsize)
+		FileSource(string _filename, unsigned int _windowsize, launch _policy, int _datapoints) : DataSource<T>(_windowsize)
 		{
 			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _datapoints));
+		}
+		
+		FileSource(string _filename, unsigned int _windowsize, int _datapoints) : DataSource<T>(_windowsize)
+		{
+			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, _datapoints));
+		}
+			
+		FileSource(string _filename, unsigned int _windowsize, launch _policy) : DataSource<T>(_windowsize)
+		{
+			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _policy, -1));
+		}
+		
+		FileSource(string _filename, unsigned int _windowsize) : DataSource<T>(_windowsize)
+		{
+			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, -1));
 		}
 		
 		//No copying. That would leave this object in a horrendous state
 		//and I don't want to figure out how to do it. 
 		FileSource(FileSource<T> const & cpy) = delete; 
 		FileSource<T>& operator =(const FileSource<T>& cpy) = delete; 
-		
+	
 		//Moving is fine, so support rvalue move and move assignment operators.
 		FileSource(FileSource<T> && mv) : DataSource<T>(mv.windowsize), impl(mv.impl) {}
 		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
@@ -107,7 +135,7 @@ class FileSource : public DataSource<T> {
 		
 		virtual T * get() override { return impl->get(); };
 		virtual void tick() override { impl->tock(); };
-		virtual bool eods() const override { return impl->eods(); };
+		virtual bool eods() override { return impl->eods(); };
 
 };
 
@@ -117,29 +145,87 @@ class FileSourceImpl {
 	private:
 		vector<T> data;
 		ifstream file;
-		future<void> ft; 
+		future<vector<T>> ft; 
 	
 		int datapoints_limit; 
 		unsigned int datapoints_read; 
-		unsigned int windowsize; 
-		unsigned int validwindow; 
+		unsigned int windowsize;  
 		unsigned int start; 
 	
-		bool ready; 
+		atomic<bool> pendingio;
+		atomic<bool> readyio; 
+	
+		launch policy; 
 	
 		unsigned int read_extent;
+	
+		inline unsigned int nvalidwindows() const {
+			
+			//if the vector is empty, we definitely don't have 
+			//any valid windows. 
+			if(data.size() == 0) return 0; 
+			
+			//if the vector contains fewer elements than the
+			//windowsize, then we don't have any valid windows
+			if((data.size() - start) < windowsize) return 0;
+			
+			//otherwise, if we have the same (or more) elements
+			//as the windowsize, then we have at least one window. 
+			return ((data.size() - start) - windowsize) + 1; 
+																		
+		}
+		
+		inline  bool hasvalidwindow() const {
+			return nvalidwindows() > 0; 
+		}
+		
+		inline bool completed() const {
+			return datapoints_read == datapoints_limit; 
+		}
+		
+		inline void read()  {
+			//remove past values
+			data.erase(data.begin(), data.begin() + start);
+			//get an append the new data
+			auto tmpdata = ft.get();
+			data.insert(data.end(), tmpdata.begin(), tmpdata.end());
+			//update values. 
+			start = 0; 
+			pendingio = false; 
+			readyio = false; 
+		}
+		
+		inline void check()  {
+			//If there's something to pick up, pick it up
+			if(readyio) {
+				read();
+			}
+			//If there are no valid windows, we need to 
+			//check if there is a pending (but incomplete)
+			//io operation. 
+			if(!hasvalidwindow()) {
+				if(pendingio) {
+					read();
+				}
+				else {
+					throw FileSourceInvalidException();
+				}
+			}
+		}
+			
 		
 	public:
-		FileSourceImpl(string filename, unsigned int _windowsize, int datapoints = -1)  :
+		FileSourceImpl(string filename, unsigned int _windowsize, launch _policy, int datapoints)  :
 			data(), 
 			file(filename), 
 			ft(),
 			datapoints_limit(datapoints),
 			datapoints_read(0),
 			windowsize(_windowsize),
-			validwindow(0),
 			start(0),
-			ready(false)
+			pendingio(true),
+			readyio(false),
+			policy(_policy)
 		{
 			
 			read_extent = windowsize * 3; 
@@ -148,13 +234,15 @@ class FileSourceImpl {
 			
 			if(!file.good()) throw -1; 
 
-			ft = async(function<void(void)>([&]() {
+			ft = async(policy, [&]() {
+				
+				vector<T> tmpdata = vector<T>();
+				tmpdata.reserve(read_extent);
 				
 				unsigned int i = 0;
-				validwindow = 0; 
 				
 				for( ; i < read_extent; i++)  {
-					if(datapoints_read == datapoints_limit) break; 
+					if((datapoints_read + i) == datapoints_limit) break; 
 					if(file.eof()) break;
 					
 					string stemp; 
@@ -164,15 +252,16 @@ class FileSourceImpl {
 					T temp;
 					ss >> temp; 
 					
-					data.push_back(temp);
+					tmpdata.push_back(temp);
+					
 					datapoints_read++;
 				}
 				
-				validwindow = i + 1;
+				readyio = true; 
 				
-				ready = true; 
+				return tmpdata;
 				
-			}));
+			});
 			
 		}
 		
@@ -185,44 +274,38 @@ class FileSourceImpl {
 		~FileSourceImpl() = default; 
 		
 		T * get() { 
-			if(!ready) {
-				ft.get();
-			}
+			check();
 			return data.data() + start;
 		}
 		
 		void tock() {
+			
+			//Need to make sure that, if someone is going through the 
+			//datastream quickly (skipping a few values for ex) then we 
+			//don't miss a load. 
+			check();
+			
 			start++;
-			if(start == ((windowsize * 2) - 1)) {
+			
+			if(start == windowsize) {
 			
 				//Time to load a new file slice. 
+			
+				//Mark as pendingio. 
+				pendingio = true; 
 				
-				//Mark as unready. 
-				ready = false; 
-				
-				//Redisg the read_extent. We read in three, one is left, so we only need
-				//to read in two. This isn't quite optimal as it recalculates for each time
-				//this function runs. I'll figure that out later. 
-				
-				read_extent =  (windowsize * 2);
-				
-				ft = async(function<void(void)>([&]() {
+				ft = async(policy, [&]() {
 					
-					//First things first, lets delete the items in the vector that we 
-					//no longer need. 
+					//Create and configure the 
+					//return
+					vector<T> tmpdata = vector<T>();
+					tmpdata.reserve(windowsize);
 					
-					data.erase(data.begin(), data.begin() + ((windowsize * 2)-1));
-					
-					//Reset the start and the valid window
-					
-					start = 0; 
-					validwindow = 0; 
-				
 					//Now the load
 					
 					unsigned int i = 0; 
 					
-					for( ; i < read_extent; i++)  {
+					for( ; i < windowsize; i++)  {
 						if(datapoints_read == datapoints_limit) break; 
 						if(file.eof()) break;
 						
@@ -233,41 +316,28 @@ class FileSourceImpl {
 						T temp;
 						ss >> temp; 
 					
-						data.push_back(temp);
+						tmpdata.push_back(temp);
+
 						datapoints_read++;
 					}
 					
-					validwindow = (i+1) + windowsize;
+					readyio = true; 
 					
-					ready = true; 
+					return tmpdata;
 				
-				}));
+				});
 				
 			}
 		}
 		
-		inline bool eods() const {
-			//end of data stream. 
-			//
-			//basically, is the window still valid. 
-			//
-			//This is fairly easy to check, as it comes down to two things
-			//Firstly. Is the pointer within the valid window. 
+		inline bool eods() {
+			//End of data stream? Do we have a valid window
 			
-			//If there are 30 valid items in the array, there are items 
-			//from 0-29. 
-			//
-			//The last valid window would be from 20-29. The window becomes
-			//invalid when the start pointer is equal to 21 or more. So:
-			//		   30      31    21
-			if(start >= ((validwindow +1) - windowsize)) return true; 
-				
-			//Secondly, is the pointer within the maximum window. This follows
-			//the same idea, but uses the maximum windowsize (data.size())
-			//for situations where 
-			if(start >= ((data.size() +1) - windowsize)) return true;
+			//Make sure that we've done all the loading, if there are any 
+			//IO operations pending
+			check();
 			
-			return false; 
+			return !hasvalidwindow();
 			
 		}
 	

@@ -47,7 +47,7 @@ class DataSource {
 		//increment the start pointer
 		virtual void tick() = 0;
 		//check that the window is still valid
-		virtual bool eods() const = 0; 
+		virtual bool eods() = 0; 
     
 };
 

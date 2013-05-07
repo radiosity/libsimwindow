@@ -44,18 +44,39 @@ using std::async;
 
 BOOST_AUTO_TEST_CASE(filesource_test) {
 	
-	auto fs = libsim::FileSource<unsigned int>("test/data", 10, 40);
+	auto fs = libsim::FileSource<unsigned int>("test/data", 10);
 	
 	for(unsigned int i = 0 ; i < 30; i++) {
 	
+		BOOST_CHECK(!fs.eods());
+	
 		for (unsigned int j = 0 ; j < 10; j++) {
-			BOOST_CHECK(!fs.eofs());
 			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
 		}
 		
 		fs.tick();
 		
 	}
+	
+}
+
+BOOST_AUTO_TEST_CASE(filesource_test2) {
+	
+	auto fs = libsim::FileSource<unsigned int>("test/data", 5, 30);
+	
+	for(unsigned int i = 0 ; i <= 25; i++)  {
+	
+		BOOST_CHECK(!fs.eods());
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
+		
+		fs.tick();
+		
+	}
+	
+	BOOST_CHECK(fs.eods());
 	
 	
 }
