@@ -133,9 +133,9 @@ class FileSource : public DataSource<T> {
 		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
 		~FileSource() = default; 
 		
-		virtual T * get() override { return impl->get(); };
-		virtual void tick() override { impl->tock(); };
-		virtual bool eods() override { return impl->eods(); };
+		inline virtual T * get() override { return impl->get(); };
+		inline virtual void tick() override { impl->tock(); };
+		inline virtual bool eods() override { return impl->eods(); };
 
 };
 
@@ -147,15 +147,15 @@ class FileSourceImpl {
 		ifstream file;
 		future<vector<T>> ft; 
 	
-		int datapoints_limit; 
+		const int datapoints_limit; 
 		unsigned int datapoints_read; 
-		unsigned int windowsize;  
+		const unsigned int windowsize;  
 		unsigned int start; 
 	
 		atomic<bool> pendingio;
 		atomic<bool> readyio; 
 	
-		launch policy; 
+		const launch policy; 
 	
 		unsigned int read_extent;
 	
@@ -236,7 +236,7 @@ class FileSourceImpl {
 
 			ft = async(policy, [&]() {
 				
-				vector<T> tmpdata = vector<T>();
+				auto tmpdata = vector<T>();
 				tmpdata.reserve(read_extent);
 				
 				unsigned int i = 0;
@@ -298,7 +298,7 @@ class FileSourceImpl {
 					
 					//Create and configure the 
 					//return
-					vector<T> tmpdata = vector<T>();
+					auto tmpdata = vector<T>();
 					tmpdata.reserve(windowsize);
 					
 					//Now the load

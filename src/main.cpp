@@ -32,19 +32,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <future>
 #include <functional>
+#include <vector>
 
 #include "FileSource.hpp"
+#include "VectorSource.hpp"
 
 using std::cout; 
 using std::endl; 
 using std::future; 
 using std::async;
+using std::vector;
 
-//using namespace libsim;
+using namespace libsim;
 
 BOOST_AUTO_TEST_CASE(filesource_test) {
 	
-	auto fs = libsim::FileSource<unsigned int>("test/data", 10);
+	auto fs = FileSource<unsigned int>("test/data", 10);
 	
 	for(unsigned int i = 0 ; i < 30; i++) {
 	
@@ -62,7 +65,7 @@ BOOST_AUTO_TEST_CASE(filesource_test) {
 
 BOOST_AUTO_TEST_CASE(filesource_test2) {
 	
-	auto fs = libsim::FileSource<unsigned int>("test/data", 5, 30);
+	auto fs = FileSource<unsigned int>("test/data", 5, 30);
 	
 	for(unsigned int i = 0 ; i <= 25; i++)  {
 	
@@ -78,5 +81,31 @@ BOOST_AUTO_TEST_CASE(filesource_test2) {
 	
 	BOOST_CHECK(fs.eods());
 	
+}
+
+// Vectors
+
+BOOST_AUTO_TEST_CASE(vectorsource_test) {
+	
+	auto data = vector<unsigned int>();
+	for(unsigned int i = 0; i < 30; i++) {
+		data.push_back(i);
+	}
+	
+	auto fs = VectorSource<unsigned int>(data, 5);
+	
+	for(unsigned int i = 0 ; i <= 25; i++)  {
+	
+		BOOST_CHECK(!fs.eods());
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
+		
+		fs.tick();
+		
+	}
+	
+	BOOST_CHECK(fs.eods());
 	
 }

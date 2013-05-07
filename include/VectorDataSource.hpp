@@ -25,37 +25,15 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef VectorSource_HEADER
+#define VectorSource_HEADER
 
-#ifndef DataSource_HEADER
-#define DataSource_HEADER
+#include "DataSource.hpp"
 
 namespace libsim 
 {
 
-template<class T>
-class DataSource {
-	
-	protected:
-		const unsigned int windowsize;
-
-	public:
-		DataSource(unsigned int _windowsize) : windowsize(_windowsize) { };
-		~DataSource() { };
-    
-		//get a pointer to the start of the window
-		virtual T * get() = 0;
-		//increment the start pointer
-		virtual void tick() = 0;
-		//check that the window is still valid
-		virtual bool eods() = 0; 
-		
-		inline unsigned int getwindowsize() { return windowsize; }
-    
-};
 
 }
 
 #endif
-
-
-
