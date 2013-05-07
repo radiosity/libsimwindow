@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "FileSource.hpp"
 #include "VectorSource.hpp"
+#include "SharedSource.hpp"
 
 using std::cout; 
 using std::endl; 
@@ -109,3 +110,33 @@ BOOST_AUTO_TEST_CASE(vectorsource_test) {
 	BOOST_CHECK(fs.eods());
 	
 }
+
+// Shared
+
+BOOST_AUTO_TEST_CASE(sharedsource_test) {
+	
+	unsigned int * data = new unsigned int[30];
+	for(unsigned int i = 0; i < 30; i++) {
+		data[i]=i;
+	}
+	
+	auto fs = SharedSource<unsigned int>(data, 30, 5);
+	
+	for(unsigned int i = 0 ; i <= 25; i++)  {
+	
+		BOOST_CHECK(!fs.eods());
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
+		
+		fs.tick();
+		
+	}
+	
+	BOOST_CHECK(fs.eods());
+	
+	delete data;
+	
+}
+
