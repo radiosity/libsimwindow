@@ -26,8 +26,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /* 
-The vector data source is simple; it takes in a vector of data (compiled by another class etc) and 
-utilises it as the data passed out through the window. 
+This will NOT delete the pointer that's passed to it, so it is safe to use in situations where a single
+buffer is allocated and passed to multiple SharedSources. This may be useful when, for example, you 
+want to run an algorithm with varying windowsizes over a dataset, but without having to duplicate
+all the data. 
 */
 
 #ifndef SharedSource_HEADER
