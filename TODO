@@ -1,2 +1,3 @@
 Change the windowsize offsetting for the backing store of the FileSource class?
 Add a seek() function so that a user can skip. This gets rid of the need to loop through (which would be horrifyingly inefficient).
+Clean up the specifications files. They're at least in a separate folder now, but they're far from clear to anyone except (perhaps) me. 
