@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "FileSource.hpp"
 #include "VectorSource.hpp"
 #include "SharedSource.hpp"
+#include "RingSource.hpp"
 
 using std::cout; 
 using std::endl; 
@@ -139,4 +140,28 @@ BOOST_AUTO_TEST_CASE(sharedsource_test) {
 	delete data;
 	
 }
+
+// Ring
+
+BOOST_AUTO_TEST_CASE(fatsource_test) {
+	
+	auto data = vector<unsigned int>();
+	for(unsigned int i = 0; i < 6; i++) {
+		data.push_back(i);
+	}
+	
+	auto fs = RingSource<unsigned int>(data, 5);
+	
+	for(unsigned int i = 0 ; i <= 12; i++)  {
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL((i+j) % 6, fs.get()[j]);
+		}
+		
+		fs.tick();
+		
+	}
+	
+}
+
 
