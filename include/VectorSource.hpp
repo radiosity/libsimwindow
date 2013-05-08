@@ -34,10 +34,12 @@ utilises it as the data passed out through the window.
 #define VectorSource_HEADER
 
 #include <vector>
+#include <utility>
 
 #include "DataSource.hpp"
 
-using std::vector; 
+using std::vector;
+using std::move; 
 
 namespace libsim 
 {
@@ -56,8 +58,8 @@ class VectorSource : public DataSource<T> {
 		VectorSource<T>& operator =(const VectorSource<T>& cpy) = delete; 
 	
 		//Moving is fine, so support rvalue move and move assignment operators.
-		VectorSource(VectorSource<T> && mv) : DataSource<T>(mv.windowsize), data(mv.data), start(mv.start) {}
-		VectorSource<T>& operator =(VectorSource<T> && mv) { data = mv.data; start = mv.start; return *this; }
+		VectorSource(VectorSource<T> && mv) : DataSource<T>(mv.windowsize), data(move(mv.data)), start(mv.start) {}
+		VectorSource<T>& operator =(VectorSource<T> && mv) { data = move(mv.data); start = mv.start; return *this; }
 		~VectorSource() = default; 
     
 		//get a pointer to the start of the window
