@@ -18,3 +18,5 @@
 
 #scons crud
 .sconsign.dblite
+
+bin/
