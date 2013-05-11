@@ -71,7 +71,7 @@ class VectorSource : public DataSource<T> {
 		void tick() { start++; }
 		
 		//check that the window is still valid
-		bool eods() { return start > (data.size() - DataSource<T>::windowsize); }
+		bool eods() { return start > (data.size() - this->windowsize); }
 		
 };
 

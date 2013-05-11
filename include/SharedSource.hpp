@@ -72,7 +72,7 @@ class SharedSource : public DataSource<T> {
 		void tick() { start++; }
 		
 		//check that the window is still valid
-		bool eods() { return start > (size - DataSource<T>::windowsize); }
+		bool eods() { return start > (size - this->windowsize); }
 		
 };
 
