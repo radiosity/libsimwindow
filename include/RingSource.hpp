@@ -80,7 +80,7 @@ class RingSource : public DataSource<T> {
 		RingSource<T>& operator =(const RingSource<T>& cpy) = delete; 
 	
 		//Moving is fine, so support rvalue move and move assignment operators.
-		RingSource(RingSource<T> && mv) : DataSource<T>(mv.windowsize), data(move(mv.data)), patch(move(m.vpatch)), start(mv.start) {}
+		RingSource(RingSource<T> && mv) : DataSource<T>(mv.windowsize), data(move(mv.data)), patch(move(mv.patch)), start(mv.start) {}
 		RingSource<T>& operator =(RingSource<T> && mv) { data = move(mv.data); data = move(mv.patch); start = mv.start; return *this; }
 		~RingSource() = default; 
     

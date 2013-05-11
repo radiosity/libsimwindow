@@ -65,11 +65,13 @@ DataSource parent class.
 #include <sstream>
 #include <exception>
 #include <atomic>
+#include <memory>
+#include <algorithm>
 
 #include "DataSource.hpp"
 
 using std::string;
-using std::auto_ptr; 
+using std::unique_ptr; 
 using std::ifstream;
 using std::future;
 using std::function;
@@ -81,6 +83,7 @@ using std::stringstream;
 using std::exception; 
 using std::atomic; 
 using std::launch;
+using std::move;
 
 namespace libsim 
 {
@@ -100,27 +103,27 @@ template <class T>
 class FileSource : public DataSource<T> {
 	
 	private:
-		auto_ptr<FileSourceImpl<T>> impl;
+		unique_ptr<FileSourceImpl<T>> impl;
 	
 	public:
 		FileSource(string _filename, unsigned int _windowsize, launch _policy, int _datapoints) : DataSource<T>(_windowsize)
 		{
-			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _datapoints));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _datapoints));
 		}
 		
 		FileSource(string _filename, unsigned int _windowsize, int _datapoints) : DataSource<T>(_windowsize)
 		{
-			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, _datapoints));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, _datapoints));
 		}
 			
 		FileSource(string _filename, unsigned int _windowsize, launch _policy) : DataSource<T>(_windowsize)
 		{
-			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _policy, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _policy, -1));
 		}
 		
 		FileSource(string _filename, unsigned int _windowsize) : DataSource<T>(_windowsize)
 		{
-			impl = auto_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, -1));
 		}
 		
 		//No copying. That would leave this object in a horrendous state
@@ -129,8 +132,8 @@ class FileSource : public DataSource<T> {
 		FileSource<T>& operator =(const FileSource<T>& cpy) = delete; 
 	
 		//Moving is fine, so support rvalue move and move assignment operators.
-		FileSource(FileSource<T> && mv) : DataSource<T>(mv.windowsize), impl(mv.impl) {}
-		FileSource<T>& operator =(FileSource<T> && mv) { impl = mv.impl; return *this; }
+		FileSource(FileSource<T> && mv) : DataSource<T>(mv.windowsize), impl(move(mv.impl)) {}
+		FileSource<T>& operator =(FileSource<T> && mv) { impl = move(mv.impl); return *this; }
 		~FileSource() = default; 
 		
 		inline virtual T * get() override { return impl->get(); };
