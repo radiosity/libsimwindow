@@ -106,24 +106,24 @@ class FileSource : public DataSource<T> {
 		unique_ptr<FileSourceImpl<T>> impl;
 	
 	public:
-		FileSource(string _filename, unsigned int _windowsize, launch _policy, int _datapoints) : DataSource<T>(_windowsize)
+		FileSource(string _fn, unsigned int _wsize, launch _policy, int _datapoints) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _datapoints));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, _datapoints));
 		}
 		
-		FileSource(string _filename, unsigned int _windowsize, int _datapoints) : DataSource<T>(_windowsize)
+		FileSource(string _fn, unsigned int _wsize, int _datapoints) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, _datapoints));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, launch::deferred, _datapoints));
 		}
 			
-		FileSource(string _filename, unsigned int _windowsize, launch _policy) : DataSource<T>(_windowsize)
+		FileSource(string _fn, unsigned int _wsize, launch _policy) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, _policy, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, _policy, -1));
 		}
 		
-		FileSource(string _filename, unsigned int _windowsize) : DataSource<T>(_windowsize)
+		FileSource(string _fn, unsigned int _wsize) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_filename, _windowsize, launch::deferred, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, launch::deferred, -1));
 		}
 		
 		//No copying. That would leave this object in a horrendous state
@@ -218,13 +218,13 @@ class FileSourceImpl {
 			
 		
 	public:
-		FileSourceImpl(string filename, unsigned int _windowsize, launch _policy, int datapoints)  :
+		FileSourceImpl(string filename, unsigned int _wsize, launch _policy, int datapoints)  :
 			data(), 
 			file(filename), 
 			ft(),
 			datapoints_limit(datapoints),
 			datapoints_read(0),
-			windowsize(_windowsize),
+			windowsize(_wsize),
 			start(0),
 			pendingio(true),
 			readyio(false),
