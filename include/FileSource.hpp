@@ -54,47 +54,23 @@ DataSource parent class.
 #ifndef FileSource_HEADER
 #define FileSource_HEADER
 
-#include <vector>
 #include <string>
-#include <utility>
-#include <fstream>
-#include <future>
-#include <functional>
 #include <cmath>
-#include <iostream>
-#include <sstream>
 #include <exception>
-#include <atomic>
 #include <memory>
 #include <algorithm>
 
 #include "DataSource.hpp"
+#include "AsyncIOImpl.hpp"
 
 using std::string;
 using std::unique_ptr; 
 using std::ifstream;
-using std::future;
-using std::function;
-using std::async; 
-using std::vector;
-using std::cout; 
-using std::endl; 
-using std::stringstream; 
 using std::exception; 
-using std::atomic; 
-using std::launch;
 using std::move;
 
 namespace libsim 
 {
-	
-class FileSourceInvalidException : public exception {
-
-	virtual const char * what()  const noexcept {
-		return "File source is invalid: no window, no pending io.";
-	}
-	
-};
 	
 template <class T>
 class FileSourceImpl;
@@ -143,128 +119,80 @@ class FileSource : public DataSource<T> {
 };
 
 template <class T>
-class FileSourceImpl {
+class FileSourceImpl : public AsyncIOImpl<T> {
 	
 	private:
-		vector<T> data;
 		ifstream file;
-		future<vector<T>> ft; 
 	
-		const int datapoints_limit; 
-		unsigned int datapoints_read; 
-		const unsigned int windowsize;  
-		unsigned int start; 
-	
-		atomic<bool> pendingio;
-		atomic<bool> readyio; 
-	
-		const launch policy; 
-	
-		unsigned int read_extent;
-	
-		inline unsigned int nvalidwindows() const {
+		virtual vector<T> ioinit() override { 
 			
-			//if the vector is empty, we definitely don't have 
-			//any valid windows. 
-			if(data.size() == 0) return 0; 
+			auto tmpdata = vector<T>();
+			tmpdata.reserve(this->read_extent);
 			
-			//if the vector contains fewer elements than the
-			//windowsize, then we don't have any valid windows
-			if((data.size() - start) < windowsize) return 0;
+			unsigned int i = 0;
 			
-			//otherwise, if we have the same (or more) elements
-			//as the windowsize, then we have at least one window. 
-			return ((data.size() - start) - windowsize) + 1; 
-																		
-		}
-		
-		inline  bool hasvalidwindow() const {
-			return nvalidwindows() > 0; 
-		}
-		
-		inline bool completed() const {
-			return datapoints_read == datapoints_limit; 
-		}
-		
-		inline void read()  {
-			//remove past values
-			data.erase(data.begin(), data.begin() + start);
-			//get an append the new data
-			auto tmpdata = ft.get();
-			data.insert(data.end(), tmpdata.begin(), tmpdata.end());
-			//update values. 
-			start = 0; 
-			pendingio = false; 
-			readyio = false; 
-		}
-		
-		inline void check()  {
-			//If there's something to pick up, pick it up
-			if(readyio) {
-				read();
+			for( ; i < this->read_extent; i++)  {
+				if((this->datapoints_read + i) == this->datapoints_limit) break; 
+				if(file.eof()) break;
+				
+				string stemp; 
+				getline(file, stemp);
+				
+				stringstream ss(stemp);
+				T temp;
+				ss >> temp; 
+				
+				tmpdata.push_back(temp);
+				
+				this->datapoints_read++;
 			}
-			//If there are no valid windows, we need to 
-			//check if there is a pending (but incomplete)
-			//io operation. 
-			if(!hasvalidwindow()) {
-				if(pendingio) {
-					read();
-				}
-				else {
-					throw FileSourceInvalidException();
-				}
-			}
-		}
 			
+			this->readyio = true; 
+			
+			return tmpdata;
+			
+		}
+		
+		virtual vector<T> ionext() override {
+		
+			//Create and configure the 
+			//return
+			auto tmpdata = vector<T>();
+			tmpdata.reserve(this->windowsize);
+			
+			//Now the load
+			
+			unsigned int i = 0; 
+			
+			for( ; i < this->windowsize; i++)  {
+				if(this->datapoints_read == this->datapoints_limit) break; 
+				if(file.eof()) break;
+				
+				string stemp; 
+				getline(file, stemp);
+				
+				stringstream ss(stemp);
+				T temp;
+				ss >> temp; 
+			
+				tmpdata.push_back(temp);
+
+				this->datapoints_read++;
+			}
+			
+			this->readyio = true; 
+			
+			return tmpdata;
+			
+		}
+	
 		
 	public:
-		FileSourceImpl(string filename, unsigned int _wsize, launch _policy, int datapoints)  :
-			data(), 
-			file(filename), 
-			ft(),
-			datapoints_limit(datapoints),
-			datapoints_read(0),
-			windowsize(_wsize),
-			start(0),
-			pendingio(true),
-			readyio(false),
-			policy(_policy)
+		FileSourceImpl(string filename, unsigned int _wsize, launch _policy, int datapoints) :
+			AsyncIOImpl<T>(_wsize, _policy, datapoints),
+			file(filename) 
 		{
 			
-			read_extent = windowsize * 3; 
-			
-			data.reserve(read_extent);
-			
-			if(!file.good()) throw -1; 
-
-			ft = async(policy, [&]() {
-				
-				auto tmpdata = vector<T>();
-				tmpdata.reserve(read_extent);
-				
-				unsigned int i = 0;
-				
-				for( ; i < read_extent; i++)  {
-					if((datapoints_read + i) == datapoints_limit) break; 
-					if(file.eof()) break;
-					
-					string stemp; 
-					getline(file, stemp);
-					
-					stringstream ss(stemp);
-					T temp;
-					ss >> temp; 
-					
-					tmpdata.push_back(temp);
-					
-					datapoints_read++;
-				}
-				
-				readyio = true; 
-				
-				return tmpdata;
-				
-			});
 			
 		}
 		
@@ -276,74 +204,6 @@ class FileSourceImpl {
 		FileSourceImpl<T>& operator =(FileSourceImpl<T> && mv) = delete; 
 		~FileSourceImpl() = default; 
 		
-		T * get() { 
-			check();
-			return data.data() + start;
-		}
-		
-		void tock() {
-			
-			//Need to make sure that, if someone is going through the 
-			//datastream quickly (skipping a few values for ex) then we 
-			//don't miss a load. 
-			check();
-			
-			start++;
-			
-			if(start == windowsize) {
-			
-				//Time to load a new file slice. 
-			
-				//Mark as pendingio. 
-				pendingio = true; 
-				
-				ft = async(policy, [&]() {
-					
-					//Create and configure the 
-					//return
-					auto tmpdata = vector<T>();
-					tmpdata.reserve(windowsize);
-					
-					//Now the load
-					
-					unsigned int i = 0; 
-					
-					for( ; i < windowsize; i++)  {
-						if(datapoints_read == datapoints_limit) break; 
-						if(file.eof()) break;
-						
-						string stemp; 
-						getline(file, stemp);
-						
-						stringstream ss(stemp);
-						T temp;
-						ss >> temp; 
-					
-						tmpdata.push_back(temp);
-
-						datapoints_read++;
-					}
-					
-					readyio = true; 
-					
-					return tmpdata;
-				
-				});
-				
-			}
-		}
-		
-		inline bool eods() {
-			//End of data stream? Do we have a valid window
-			
-			//Make sure that we've done all the loading, if there are any 
-			//IO operations pending
-			check();
-			
-			return !hasvalidwindow();
-			
-		}
-	
 };
 
 }
