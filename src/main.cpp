@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "VectorSource.hpp"
 #include "SharedSource.hpp"
 #include "RingSource.hpp"
+#include "SQLiteSource.hpp"
 
 using std::cout; 
 using std::endl; 
@@ -143,7 +144,7 @@ BOOST_AUTO_TEST_CASE(sharedsource_test) {
 
 // Ring
 
-BOOST_AUTO_TEST_CASE(fatsource_test) {
+BOOST_AUTO_TEST_CASE(ringsource_test) {
 	
 	auto data = vector<unsigned int>();
 	for(unsigned int i = 0; i < 6; i++) {
@@ -161,6 +162,32 @@ BOOST_AUTO_TEST_CASE(fatsource_test) {
 		fs.tick();
 		
 	}
+	
+}
+
+// Sqlite
+
+BOOST_AUTO_TEST_CASE(sqlite3_test) {
+
+  
+	sqlite3 * database;
+	sqlite3_open("test/testdb", &database);
+	
+	string sql = "SELECT * from test LIMIT ? OFFSET ?;";
+	
+	auto fs = SQLiteSource<unsigned int>(database, sql, 5);
+	
+	for(unsigned int i = 1 ; i <= 40; i++)  {
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
+		
+		fs.tick();
+		
+	}
+	
+	sqlite3_close(database);
 	
 }
 

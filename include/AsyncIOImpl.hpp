@@ -98,7 +98,7 @@ class AsyncIOImpl {
 		vector<T> data;
 		future<vector<T>> ft; 
 	
-		const int datapoints_limit; 
+		const unsigned int datapoints_limit; 
 		unsigned int datapoints_read; 
 		const unsigned int windowsize;  
 		unsigned int start; 
