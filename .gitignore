@@ -20,3 +20,5 @@
 .sconsign.dblite
 
 bin/
+
+.directory
