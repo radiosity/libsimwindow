@@ -59,6 +59,7 @@ DataSource parent class.
 #include <exception>
 #include <memory>
 #include <algorithm>
+#include <limits>
 
 #include "DataSource.hpp"
 #include "AsyncIOImpl.hpp"
@@ -68,6 +69,7 @@ using std::unique_ptr;
 using std::ifstream;
 using std::exception; 
 using std::move;
+using std::numeric_limits;
 
 namespace libsim 
 {
@@ -94,12 +96,12 @@ class FileSource : public DataSource<T> {
 			
 		FileSource(string _fn, unsigned int _wsize, launch _policy) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, _policy, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, _policy, numeric_limits<unsigned int>::max()));
 		}
 		
 		FileSource(string _fn, unsigned int _wsize) : DataSource<T>(_wsize)
 		{
-			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, launch::deferred, -1));
+			impl = unique_ptr<FileSourceImpl<T>>(new FileSourceImpl<T>(_fn, _wsize, launch::deferred, numeric_limits<unsigned int>::max()));
 		}
 		
 		//No copying. That would leave this object in a horrendous state
@@ -132,7 +134,7 @@ class FileSourceImpl : public AsyncIOImpl<T> {
 			unsigned int i = 0;
 			
 			for( ; i < this->read_extent; i++)  {
-				if((this->datapoints_read + i) == this->datapoints_limit) break; 
+				if(this->datapoints_read == this->datapoints_limit) break; 
 				if(file.eof()) break;
 				
 				string stemp; 
@@ -188,7 +190,7 @@ class FileSourceImpl : public AsyncIOImpl<T> {
 	
 		
 	public:
-		FileSourceImpl(string filename, unsigned int _wsize, launch _policy, int datapoints) :
+		FileSourceImpl(string filename, unsigned int _wsize, launch _policy, unsigned int datapoints) :
 			AsyncIOImpl<T>(_wsize, _policy, datapoints),
 			file(filename) 
 		{
