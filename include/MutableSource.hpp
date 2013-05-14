@@ -30,13 +30,13 @@ The vector data source is simple; it takes in a vector of data (compiled by anot
 utilises it as the data passed out through the window. 
 */
 
-#ifndef VectorSource_HEADER
-#define VectorSource_HEADER
+#ifndef MutableSource_HEADER
+#define MutableSource_HEADER
 
 #include <vector>
 #include <utility>
 
-#include "DataSource.hpp"
+#include "VectorSource.hpp"
 
 using std::vector;
 using std::move; 
@@ -45,33 +45,25 @@ namespace libsim
 {
 
 template<class T>
-class VectorSource : public DataSource<T> {
-	
-	protected:
-		vector<T> data;
-		unsigned int start; 
+class MutableSource : public VectorSource<T> {
 
 	public:
-		VectorSource(vector<T> _data, unsigned int _windowsize) : DataSource<T>(_windowsize), data(_data), start(0) {}
+		MutableSource(vector<T> _data, unsigned int _windowsize) : VectorSource<T>(_data, _windowsize) {}
 		
-		VectorSource(VectorSource<T> const & cpy) = delete; 
-		VectorSource<T>& operator =(const VectorSource<T>& cpy) = delete; 
+		//Again, no copying
+		MutableSource(MutableSource<T> const & cpy) = delete; 
+		MutableSource<T>& operator =(const MutableSource<T>& cpy) = delete; 
 	
 		//Moving is fine, so support rvalue move and move assignment operators.
-		VectorSource(VectorSource<T> && mv) : DataSource<T>(mv.windowsize), data(move(mv.data)), start(mv.start) {}
-		VectorSource<T>& operator =(VectorSource<T> && mv) { data = move(mv.data); start = mv.start; return *this; }
-		~VectorSource() = default; 
+		MutableSource(MutableSource<T> && mv) : VectorSource<T>(mv.data, mv.windowsize) {}
+		MutableSource<T>& operator = (MutableSource<T> && mv) { this->data = move(mv.data); this->start = mv.start; return *this; }
+		~MutableSource() = default; 
     
-		//get a pointer to the start of the window
-		T * get()  {
-			return data.data() + start;
+		void push_back(T temp) {
+		
+			this->data.push_back(temp);
+		  
 		}
-		
-		//increment the start pointer
-		void tick() { start++; }
-		
-		//check that the window is still valid
-		bool eods() { return start > (data.size() - this->windowsize); }
 		
 };
 

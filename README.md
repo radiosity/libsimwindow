@@ -37,3 +37,7 @@ The SQL query must provide two bindable parameters, "LIMIT ? OFFSET ?" as this i
 In various situations where I've tried it, SQLite hasn't given me any problems being used in a multi-threaded environment (although this is cautioned in the SQLite documentation). If this is the case, you may need to sqlite3_config(SQLITE_CONFIG_MULTITHREAD) before loading the database. 
 
 Copies of this class are NOT supported; it is reccomended to explicityly std::move() the object. 
+
+MutableSource:
+--
+This inherits from the VectorSource to provide a push_back() mechanism which might be useful. 

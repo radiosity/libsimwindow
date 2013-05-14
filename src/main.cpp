@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SharedSource.hpp"
 #include "RingSource.hpp"
 #include "SQLiteSource.hpp"
+#include "MutableSource.hpp"
 
 using std::cout; 
 using std::endl; 
@@ -112,6 +113,34 @@ BOOST_AUTO_TEST_CASE(vectorsource_test) {
 	BOOST_CHECK(fs.eods());
 	
 }
+
+// Mutable
+
+BOOST_AUTO_TEST_CASE(mutable_test) {
+  
+	auto data = vector<unsigned int>();
+	for(unsigned int i = 0; i < 10; i++) {
+		data.push_back(i);
+	}
+	
+	auto fs = MutableSource<unsigned int>(data, 5);
+	
+	for(unsigned int i = 0 ; i <= 50; i++)  {
+	
+		BOOST_CHECK(!fs.eods());
+		
+		for (unsigned int j = 0 ; j < 5; j++) {
+			BOOST_CHECK_EQUAL(i+j, fs.get()[j]);
+		}
+		
+		fs.push_back(10+i);
+		
+		fs.tick();
+		
+	}
+	
+}
+
 
 // Shared
 
